@@ -1,4 +1,4 @@
-import serial
+
 
 def unlock_servo():
     k3 = serial.Serial('COM5', baudrate=115200,parity=serial.PARITY_NONE, timeout=1)

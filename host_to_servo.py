@@ -1,5 +1,5 @@
 import serial
-
+byte = 8
 class host2servo:
     def __init__(self, port):
         self.ser = serial.Serial(port, baudrate=115200,parity=serial.PARITY_NONE, timeout=1)
@@ -17,14 +17,14 @@ class host2servo:
         self.cnt = len(id_list)
         self.txCmd = [hdr & 0xff]
         self.txCmd.append(ad & 0xff)
-        self.txCmd.append((ad >> 8) & 0xff)
+        self.txCmd.append((ad >> byte) & 0xff)
         self.txCmd.append(lg & 0xff)
         self.txCmd.append(self.cnt & 0xff)
         for id in id_list:
             self.txCmd.append(id & 0xff)
             for data in data_list:
                 for n in range(lg):
-                    self.txCmd.append((data >> 8 * n) & 0xff)
+                    self.txCmd.append((data >> byte * n) & 0xff)
         self.txCmd.append(self.csm(self.txCmd))
 
     def csm(self, blist):
@@ -40,10 +40,10 @@ class host2servo:
     
     def receive(self):
         if self.hdr == 0x59:
-            r_len = self.cnt * 32
+            r_len = self.cnt * 4 * byte
         if self.hdr == 0x58:
-            r_len = self.cnt * 8
-        r = self.ser.read(len(self.txCmd)*8 + r_len)
+            r_len = self.cnt * byte
+        r = self.ser.read(len(self.txCmd)*byte + r_len)
         self.rxCmd = r[len(self.txCmd):]
         if len(self.rxCmd) == 0:
             return False
@@ -57,10 +57,10 @@ class host2servo:
         for b in cmd:
             print(format(b, '#04x'), end=' ')
 
-'''
+
 k3 = host2servo("COM5")
-k3.send(0x58, 0x0082, 1, 0, 0xff)
+k3.send(0x58, 0x82, 1, 0, 0xff)
 k3.receive()
 k3.print_cmd(k3.rxCmd)
 k3.close()
-'''
+
