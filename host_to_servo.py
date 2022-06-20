@@ -1,4 +1,6 @@
 import serial
+from struct import *
+from common import *
 byte = 8
 class host2servo:
     def __init__(self, port):
@@ -15,33 +17,44 @@ class host2servo:
             data_list = [data_list]
         self.hdr = hdr
         self.cnt = len(id_list)
-        self.txCmd = [hdr & 0xff]
-        self.txCmd.append(ad & 0xff)
-        self.txCmd.append((ad >> byte) & 0xff)
-        self.txCmd.append(lg & 0xff)
-        self.txCmd.append(self.cnt & 0xff)
-        for id in id_list:
-            self.txCmd.append(id & 0xff)
-            for data in data_list:
-                for n in range(lg):
-                    self.txCmd.append((data >> byte * n) & 0xff)
-        self.txCmd.append(self.csm(self.txCmd))
+        self.txCmd += DataProcessor._encode_int8(hdr)
+        #self.txCmd.append(ad & 0xff)
+        #self.txCmd.append((ad >> byte) & 0xff)
+        self.txCmd += DataProcessor._encode_int16(ad)
+        self.txCmd += DataProcessor._encode_int8(lg)
+        self.txCmd += DataProcessor._encode_int8(self.cnt)
+        for i in range(self.cnt):
+            self.txCmd += DataProcessor._encode_int8(id_list[i])
+            if hdr != header.READ:
+                data = data_list[i]
+                if lg == 1:
+                    self.txCmd += DataProcessor._encode_int8(data)
+                if lg == 2:
+                    self.txCmd += DataProcessor._encode_int16(data)
+        self.txCmd += DataProcessor._encode_int8(self.make_csm(self.txCmd))
 
-    def csm(self, blist):
+    def make_csm(self, blist):
         sum = 0
         for i in blist:
             sum += i
         c = (~sum + 1) & 0xff
         return c
 
+    def check_csm(self, cmd):
+        if self.make_csm(cmd[:-1]) == cmd[-1]:
+            return True
+        else:
+            return False
+
     def send(self, hdr, ad, lg, id_list, data_list = []):
         self.make_txCmd(hdr, ad, lg, id_list, data_list)
         self.ser.write(self.txCmd)
+        #self.receive()
     
     def receive(self):
-        if self.hdr == 0x59:
+        if self.hdr == header.READ:
             r_len = self.cnt * 4 * byte
-        if self.hdr == 0x58:
+        if self.hdr == header.WRITE:
             r_len = self.cnt * byte
         r = self.ser.read(len(self.txCmd)*byte + r_len)
         self.rxCmd = r[len(self.txCmd):]
@@ -59,8 +72,7 @@ class host2servo:
 
 
 k3 = host2servo("COM5")
-k3.send(0x58, 0x82, 1, 0, 0xff)
+k3.send(0x59, 0x40, 2, (0,1))
 k3.receive()
 k3.print_cmd(k3.rxCmd)
 k3.close()
-

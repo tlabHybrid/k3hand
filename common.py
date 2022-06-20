@@ -1,3 +1,5 @@
+import struct
+
 class address:
     SYS_PN = 0x00 #product name
     SYS_VER = 0x02 #version
@@ -29,15 +31,28 @@ class header:
 class DataProcessor:
     def _int2angle(i):
         if(i < 0):
-            return round(i / 32768 * 90, 1)
+            return round(i / 32768 * 180, 1)
         else:
-            return round(i / 32767 * 90, 1)
+            return round(i / 32767 * 180, 1)
     
-    def angle2int(a):
+    def _angle2int(a):
         if(a < 0):
-            return int(a / 90 * 32768)
+            return int(a / 180 * 32768)
         else:
-            return int(a / 90 * 32767)
+            return int(a / 180 * 32767)
+    
+    def _decode_int8(data):
+        return struct.unpack("b", data)[0]
+    
+    def _decode_int16(data):
+        return struct.unpack("<h", data)[0]
+
+    def _encode_int8(data):
+        return struct.pack("b", data)
+
+    def _encode_int16(data):
+        return struct.pack("<h", data)
+    
     
 
 
