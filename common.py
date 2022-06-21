@@ -1,6 +1,6 @@
 import struct
 
-class address:
+class Address:
     SYS_PN = 0x00 #product name
     SYS_VER = 0x02 #version
     SYS_SID = 0x04 #servo id
@@ -23,35 +23,57 @@ class address:
     AL_VI = 0xC8 #alarm voltage (initial value:0x0000)
     SD_VI = 0xCA #shut down voltage (initial value:0x0000)      
 
-class header:
+class Header:
     WRITE = 0x58
     READ = 0x59
     WRITE_WITHOUT_RESPONSE = 0x78
 
+class Command:
+    ENABLE = 0x80
+    DISABLE = 0xFF
+    PHASE_HIGH = 0x00
+    PHASE_LOW = 0xFE
+    OK = 0x30
+    NG = 0x31
+
 class DataProcessor:
     def _int2angle(i):
         if(i < 0):
-            return round(i / 32768 * 180, 1)
+            return round(i / 32768.0 * 180.0, 1)
         else:
-            return round(i / 32767 * 180, 1)
+            return round(i / 32767.0 * 180.0, 1)
     
     def _angle2int(a):
         if(a < 0):
-            return int(a / 180 * 32768)
+            return int(a / 180.0 * 32768.0)
         else:
-            return int(a / 180 * 32767)
+            return int(a / 180.0 * 32767.0)
     
     def _decode_int8(data):
         return struct.unpack("b", data)[0]
-    
+
+    def _decode_uint8(data):
+        return struct.unpack("B", data)[0]
+
     def _decode_int16(data):
         return struct.unpack("<h", data)[0]
 
     def _encode_int8(data):
         return struct.pack("b", data)
+    
+    def _encode_uint8(data):
+        return struct.pack("B", data)
 
     def _encode_int16(data):
         return struct.pack("<h", data)
+
+    def _make_list(datas):
+        if isinstance(datas, tuple):
+            return list(datas)
+        elif not isinstance(datas, list):
+            return [datas]
+        else:
+            return datas
     
     
 
