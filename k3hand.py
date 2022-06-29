@@ -79,10 +79,11 @@ class k3:
     def disable_all(self):
         if self.h2s.send(Header.WRITE, Address.FB_EN, 1, list(range(8)), [Command.DISABLE]*8):
             self.servo_st = [False]*8
-
+'''
 k = k3("COM5")
 a = k.get_angles()
 print(a)
 print(k.get_servos_stat())
 k.send_angles([0, 0, 0, 0, 0, 0, 0, 0])
 k.disconnect()
+'''
