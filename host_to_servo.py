@@ -9,6 +9,7 @@ class host2servo:
         self.rxCmd = None   
         self.hdr = None
         self.cnt = None
+        self.rtn = None
 
     def make_txCmd(self, hdr, ad, lg, id_list, data_list = []):
         '''
@@ -52,6 +53,7 @@ class host2servo:
 
     def check_csm(self, cmd):
         if self.make_csm(cmd[:-1]) == cmd[-1]:
+            self.rtn += cmd[1:-1]
             return True
         else:
             print("Error: check sum is not correct!")
@@ -74,7 +76,14 @@ class host2servo:
             return False
         else:
             if self.hdr == Header.READ:
-                return self.check_csm(self.rxCmd)
+                check = True
+                block = int(len(self.rxCmd) / self.cnt)
+                self.rtn = b''
+                for i in range(self.cnt):
+                    if not self.check_csm(self.rxCmd[block*i:block*(i+1)]):
+                        check = False
+                        break
+                return check
             elif self.hdr == Header.WRITE:
                 check = True
                 for i in range(self.cnt):

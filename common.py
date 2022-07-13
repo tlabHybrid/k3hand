@@ -33,6 +33,8 @@ class Command:
     DISABLE = 0xFF
     PHASE_HIGH = 0x00
     PHASE_LOW = 0xFE
+    LOCK = 0x00
+    UNLOCK = 0x75
     OK = 0x30
     NG = 0x31
 
@@ -48,6 +50,12 @@ class DataProcessor:
             return int(a / 180.0 * 32768.0)
         else:
             return int(a / 180.0 * 32767.0)
+    
+    def _int2speed(i):
+        return i / 128 * 100
+    
+    def _speed2int(s):
+        return int(s / 100 * 128)
     
     def _decode_int8(data):
         return struct.unpack("b", data)[0]
