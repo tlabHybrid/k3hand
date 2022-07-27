@@ -1,8 +1,9 @@
+from __future__ import print_function
 import serial
 from struct import *
 from common import *
 byte = 8
-class host2servo:
+class host2servo(DataProcessor):
     def __init__(self, port):
         self.ser = serial.Serial(port, baudrate=115200,parity=serial.PARITY_NONE, timeout=1)
         self.txCmd = None
@@ -18,8 +19,8 @@ class host2servo:
         if not isinstance(data_list, list):
             data_list = [data_list]
         '''
-        id_list = DataProcessor._make_list(id_list)
-        data_list = DataProcessor._make_list(data_list)
+        id_list = self._make_list(id_list)
+        data_list = self._make_list(data_list)
         if hdr == Header.READ and len(data_list) > 0:
             print("Error: READ command needs no datas!")
             return
@@ -28,31 +29,32 @@ class host2servo:
             return 
         self.hdr = hdr
         self.cnt = len(id_list)
-        self.txCmd = DataProcessor._encode_int8(hdr)
+        self.txCmd = self._encode_int8(hdr)
         #self.txCmd.append(ad & 0xff)
         #self.txCmd.append((ad >> byte) & 0xff)
-        self.txCmd += DataProcessor._encode_int16(ad)
-        self.txCmd += DataProcessor._encode_int8(lg)
-        self.txCmd += DataProcessor._encode_int8(self.cnt)
+        self.txCmd += self._encode_int16(ad)
+        self.txCmd += self._encode_int8(lg)
+        self.txCmd += self._encode_int8(self.cnt)
         for i in range(self.cnt):
-            self.txCmd += DataProcessor._encode_int8(id_list[i])
+            self.txCmd += self._encode_int8(id_list[i])
             if hdr != Header.READ:
                 data = data_list[i]
                 if lg == 1:
-                    self.txCmd += DataProcessor._encode_uint8(data)
+                    self.txCmd += self._encode_uint8(data)
                 if lg == 2:
-                    self.txCmd += DataProcessor._encode_int16(data)
-        self.txCmd += DataProcessor._encode_uint8(self.make_csm(self.txCmd))
+                    self.txCmd += self._encode_int16(data)
+        self.txCmd += self._encode_uint8(self.make_csm(self.txCmd))
 
     def make_csm(self, blist):
         sum = 0
         for i in blist:
+            i = self._decode_uint8(i)
             sum += i
         c = (~sum + 1) & 0xff
         return c
 
     def check_csm(self, cmd):
-        if self.make_csm(cmd[:-1]) == cmd[-1]:
+        if self.make_csm(cmd[:-1]) == self._decode_uint8(cmd[-1]):
             self.rtn += cmd[1:-1]
             return True
         else:

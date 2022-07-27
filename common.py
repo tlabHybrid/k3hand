@@ -38,44 +38,47 @@ class Command:
     OK = 0x30
     NG = 0x31
 
-class DataProcessor:
-    def _int2angle(i):
+class DataProcessor(object):
+    def _int2angle(self, i):
         if(i < 0):
             return round(i / 32768.0 * 180.0, 1)
         else:
             return round(i / 32767.0 * 180.0, 1)
     
-    def _angle2int(a):
+    def _angle2int(self, a):
         if(a < 0):
             return int(a / 180.0 * 32768.0)
         else:
             return int(a / 180.0 * 32767.0)
     
-    def _int2speed(i):
+    def _int2speed(self, i):
         return i / 128 * 100
     
-    def _speed2int(s):
+    def _speed2int(self, s):
         return int(s / 100 * 128)
     
-    def _decode_int8(data):
+    def _decode_int8(self, data):
         return struct.unpack("b", data)[0]
 
-    def _decode_uint8(data):
-        return struct.unpack("B", data)[0]
+    def _decode_uint8(self, data):
+        if isinstance(data, int):
+            return data
+        else:
+            return struct.unpack("B", data)[0]
 
-    def _decode_int16(data):
+    def _decode_int16(self, data):
         return struct.unpack("<h", data)[0]
 
-    def _encode_int8(data):
+    def _encode_int8(self,data):
         return struct.pack("b", data)
     
-    def _encode_uint8(data):
+    def _encode_uint8(self, data):
         return struct.pack("B", data)
 
-    def _encode_int16(data):
+    def _encode_int16(self, data):
         return struct.pack("<h", data)
 
-    def _make_list(datas):
+    def _make_list(self, datas):
         if isinstance(datas, tuple):
             return list(datas)
         elif not isinstance(datas, list):
