@@ -5,7 +5,7 @@ from common import *
 byte = 8
 class host2servo(DataProcessor):
     def __init__(self, port):
-        self.ser = serial.Serial(port, baudrate=115200,parity=serial.PARITY_NONE, timeout=1)
+        self.ser = serial.Serial(port, baudrate=115200,parity=serial.PARITY_NONE, timeout=0.1)
         self.txCmd = None
         self.rxCmd = None   
         self.hdr = None
@@ -68,10 +68,10 @@ class host2servo(DataProcessor):
     
     def receive(self):
         if self.hdr == Header.READ:
-            r_len = self.cnt * 4 * byte
+            r_len = self.cnt * 4 
         if self.hdr == Header.WRITE:
-            r_len = self.cnt * byte
-        r = self.ser.read(len(self.txCmd)*byte + r_len)
+            r_len = self.cnt
+        r = self.ser.read(len(self.txCmd) + r_len)
         self.rxCmd = r[len(self.txCmd):]
         if len(self.rxCmd) == 0:
             print("Error: Servos send no messages!")

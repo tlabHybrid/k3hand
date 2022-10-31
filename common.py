@@ -1,5 +1,5 @@
 import struct
-
+import math
 class Address:
     SYS_PN = 0x00 #product name
     SYS_VER = 0x02 #version
@@ -52,10 +52,10 @@ class DataProcessor(object):
             return int(a / 180.0 * 32767.0)
     
     def _int2speed(self, i):
-        return i / 128 * 100
+        return i / 128.0 * 100.0
     
     def _speed2int(self, s):
-        return int(s / 100 * 128)
+        return int(s / 100.0 * 128.0)
     
     def _decode_int8(self, data):
         return struct.unpack("b", data)[0]
@@ -85,7 +85,11 @@ class DataProcessor(object):
             return [datas]
         else:
             return datas
-    
-    
+    def _rad2ang(self, rad):
+        return rad / math.pi * 180.0
+
+    def _ang2rad(self, ang):
+        return ang * math.pi / 180.0
+
 
 
