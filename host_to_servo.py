@@ -13,12 +13,6 @@ class host2servo(DataProcessor):
         self.rtn = None
 
     def make_txCmd(self, hdr, ad, lg, id_list, data_list = []):
-        '''
-        if not isinstance(id_list, list):
-            id_list = [id_list]
-        if not isinstance(data_list, list):
-            data_list = [data_list]
-        '''
         id_list = self._make_list(id_list)
         data_list = self._make_list(data_list)
         if hdr == Header.READ and len(data_list) > 0:
@@ -30,8 +24,6 @@ class host2servo(DataProcessor):
         self.hdr = hdr
         self.cnt = len(id_list)
         self.txCmd = self._encode_int8(hdr)
-        #self.txCmd.append(ad & 0xff)
-        #self.txCmd.append((ad >> byte) & 0xff)
         self.txCmd += self._encode_int16(ad)
         self.txCmd += self._encode_int8(lg)
         self.txCmd += self._encode_int8(self.cnt)
@@ -102,11 +94,3 @@ class host2servo(DataProcessor):
         for b in cmd:
             print(format(b, '#04x'), end=' ')
         print()
-
-'''
-k3 = host2servo("COM5")
-k3.send(0x59, 0x40, 2, [0, 1])
-k3.receive()
-k3.print_cmd(k3.rxCmd)
-k3.close()
-'''
