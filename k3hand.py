@@ -68,15 +68,13 @@ class k3hand(host2servo):
         print("function finished at %lf" %(tmp-self.start))
 
     def send_angle(self, id, angle):
-        tmp = time.time()
-        print("send_angle called at %lf" %(tmp-self.start))
+        tmp = time.time()        
         if self.servo_en[id]:
             if self.send(Header.WRITE, Address.FB_TPOS, 2, id, self._angle2int(angle)):
                 self.tar_angles[id] = angle
         else:
             print("Warning: The servo id %d is not enabled." %id)
         tmp = time.time()
-        print("send_angle finished at %lf" %(tmp-self.start))
             
     def send_angles(self, angles, id_list=list(range(8))):
         if self.send(Header.WRITE, Address.FB_TPOS, 2, id_list, list(map(self._angle2int, angles))):
