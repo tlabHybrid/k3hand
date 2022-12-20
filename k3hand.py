@@ -14,8 +14,8 @@ class k3hand(host2servo):
         self.ang_min = [-90, -90, -30, -90, -90, -50, -90, -90]
         self.ang_max = [30, 90, 90, 90, 90, 130, 90, 90]
         self.get_servos_stat()
-        self.start = time.time()
-        
+        self.debug = False
+        self.start = time.time()        
         self.unlock_all()
         self.send_ang_maxs(self.ang_max)
         self.send_ang_mins(self.ang_min)
@@ -28,12 +28,14 @@ class k3hand(host2servo):
     def unlock_servo(self, id):
         if self.send(Header.WRITE, Address.SYS_ULK, 1, id, Command.UNLOCK):            
             self.servo_lock[id] = False
-            print("The servo %d is unlocked" %id)
+            if self.debug:
+                print("The servo %d is unlocked" %id)
     
     def lock_servo(self, id):
         if self.send(Header.WRITE, Address.SYS_ULK, 1, id, Command.LOCK):
             self.servo_lock[id] = True
-            print("The servo %d is locked" %id)
+            if self.debug:
+                print("The servo %d is locked" %id)
 
     def unlock_all(self):
         if self.send(Header.WRITE, Address.SYS_ULK, 1, list(range(8)), [Command.UNLOCK]*8):
@@ -59,36 +61,48 @@ class k3hand(host2servo):
             for i in range(len(id_list)):
                 self.cur_angles[id_list[i]] = self._int2angle(self._decode_int16(self.rtn[2*i:2*(i+1)]))
             return [self._ang2rad(self.cur_angles[id]) for id in id_list]
-    
-    def time_check(self):
-        tmp = time.time()
-        print("function called at %lf" %(tmp-self.start))
-        self.send(Header.WRITE, Address.FB_TPOS, 2, 0, self._angle2int(10))
-        tmp = time.time()
-        print("function finished at %lf" %(tmp-self.start))
 
-    def send_angle(self, id, angle):
-        tmp = time.time()        
-        if self.servo_en[id]:
-            if self.send(Header.WRITE, Address.FB_TPOS, 2, id, self._angle2int(angle)):
-                self.tar_angles[id] = angle
-        # else:
-        #     print("Warning: The servo id %d is not enabled." %id)
-        tmp = time.time()
+    def send_angle(self, id, angle, speed=100):        
+        if self.send(Header.WRITE, Address.FB_SC, 1, id, [self._speed2int(speed)]*8):
+            self.speeds[id] = speed
+        if self.send(Header.WRITE, Address.FB_TPOS, 2, id, self._angle2int(angle)):
+            self.tar_angles[id] = angle
+        if self.debug and (not self.servo_en[id]):
+             print("Warning: The servo id %d is not enabled." %id)
+        
             
-    def send_angles(self, angles, id_list=list(range(8))):
+    def send_angles(self, angles, speed=100, id_list=list(range(8))):
+        if self.send(Header.WRITE, Address.FB_SC, 1, id_list, [self._speed2int(speed)]*8):
+            self.speeds[id] = speed        
         if self.send(Header.WRITE, Address.FB_TPOS, 2, id_list, list(map(self._angle2int, angles))):
             for i in range(len(id_list)):
                 self.tar_angles[id_list[i]] = angles[i]      
                
-        # if not all(self.servo_en):
-        #     dis_list = [s for s in range(8) if not self.servo_en[s]]
-        #     if len(dis_list) == 1:
-        #         print("Warning: The servo id%d is not enabled!" %dis_list[0])
-        #     else:
-        #         print("Warning: The servo id", end=" ")
-        #         print(*dis_list, sep=",",end="")
-        #         print(" are not enabled!")
+        if not all(self.servo_en):
+            if self.debug:
+                dis_list = [s for s in range(8) if not self.servo_en[s]]            
+                if len(dis_list) == 1:
+                    print("Warning: The servo id%d is not enabled!" %dis_list[0])
+                else:
+                    print("Warning: The servo id", end=" ")
+                    print(*dis_list, sep=",",end="")
+                    print(" are not enabled!")
+
+    def send_angles_dif(self, angles, speed=100, id_list=list(range(8))):
+        if self.send(Header.WRITE, Address.FB_SC, 1, id_list, [self._speed2int(speed)]*8) and self.send(Header.WRITE, Address.FB_TPOS, 2, id_list, list(map(self._angle2int, angles))):
+            for i in range(len(id_list)):
+                self.tar_angles[id_list[i]] = angles[i]      
+                self.speeds[id_list[i]] = speed                             
+               
+        if not all(self.servo_en):
+            if self.debug:
+                dis_list = [s for s in range(8) if not self.servo_en[s]]            
+                if len(dis_list) == 1:
+                    print("Warning: The servo id%d is not enabled!" %dis_list[0])
+                else:
+                    print("Warning: The servo id", end=" ")
+                    print(*dis_list, sep=",",end="")
+                    print(" are not enabled!")
                 
     def send_radians(self, radians, id_list=list(range(8))):
         self.send_angles(list(map(self._rad2ang, radians)), id_list)
@@ -131,15 +145,7 @@ class k3hand(host2servo):
         if self.send(Header.WRITE, Address.FB_POSH, 2, id_list, list(map(self._angle2int, angles))):
             for i in range(len(id_list)):
                 self.ang_max[id_list[i]] = angles[i]
-    """            
-    def get_servo_stat(self, id):
-        if self.send(Header.READ, Address.SYS_ULK, 1, id):
-            if self.rtn == Command.LOCK:
-                self.servo_lock[id] = True
-            else:
-                self.servo_lock[id] = False
-        return self.servo_en[id], self.servo_lock[id]
-    """
+
     def get_servos_stat(self, id_list=list(range(8))):
         if self.send(Header.READ, Address.FB_EN, 1, id_list):
             for id in id_list:
@@ -161,12 +167,14 @@ class k3hand(host2servo):
 
     def enable_servo(self, id):
         if self.send(Header.WRITE, Address.FB_EN, 1, id, Command.ENABLE):
-            print("The servo id %d is enabled" %id)
+            if self.debug:
+                print("The servo id %d is enabled" %id)
             self.servo_en[id] = True
     
     def disable_servo(self, id):
         if self.send(Header.WRITE, Address.FB_EN, 1, id, Command.DISABLE):
-            print("The servo id %d is disabled" %id)
+            if self.debug:
+                print("The servo id %d is disabled" %id)
             self.servo_en[id] = False
 
     def enable_all(self):
@@ -176,12 +184,3 @@ class k3hand(host2servo):
     def disable_all(self):
         if self.send(Header.WRITE, Address.FB_EN, 1, list(range(8)), [Command.DISABLE]*8):
             self.servo_en = [False]*8
-
-'''
-k = k3("/dev/ttyUSB0")
-a = k.get_angles()
-print(a)
-print(k.get_servos_stat())
-#k.send_angles([0, 0, 0, 0, 0, 0, 0, 0])
-k.disconnect()
-'''
