@@ -72,8 +72,8 @@ class k3hand(host2servo):
         if self.servo_en[id]:
             if self.send(Header.WRITE, Address.FB_TPOS, 2, id, self._angle2int(angle)):
                 self.tar_angles[id] = angle
-        else:
-            print("Warning: The servo id %d is not enabled." %id)
+        # else:
+        #     print("Warning: The servo id %d is not enabled." %id)
         tmp = time.time()
             
     def send_angles(self, angles, id_list=list(range(8))):
@@ -81,14 +81,14 @@ class k3hand(host2servo):
             for i in range(len(id_list)):
                 self.tar_angles[id_list[i]] = angles[i]      
                
-        if not all(self.servo_en):
-            dis_list = [s for s in range(8) if not self.servo_en[s]]
-            if len(dis_list) == 1:
-                print("Warning: The servo id%d is not enabled!" %dis_list[0])
-            else:
-                print("Warning: The servo id", end=" ")
-                print(*dis_list, sep=",",end="")
-                print(" are not enabled!")
+        # if not all(self.servo_en):
+        #     dis_list = [s for s in range(8) if not self.servo_en[s]]
+        #     if len(dis_list) == 1:
+        #         print("Warning: The servo id%d is not enabled!" %dis_list[0])
+        #     else:
+        #         print("Warning: The servo id", end=" ")
+        #         print(*dis_list, sep=",",end="")
+        #         print(" are not enabled!")
                 
     def send_radians(self, radians, id_list=list(range(8))):
         self.send_angles(list(map(self._rad2ang, radians)), id_list)
