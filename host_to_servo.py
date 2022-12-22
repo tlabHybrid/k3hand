@@ -11,6 +11,7 @@ class host2servo(DataProcessor):
         self.hdr = None
         self.cnt = None
         self.rtn = None
+        self.rv = None
 
     def make_txCmd(self, hdr, ad, lg, id_list, data_list = []):
         id_list = self._make_list(id_list)
@@ -58,6 +59,15 @@ class host2servo(DataProcessor):
         self.ser.write(self.txCmd)
         return self.receive()
     
+    def decode_rtn(self):
+        block = int(len(self.rxCmd) / self.cnt)        
+        self.rv = []
+        for i in range(self.cnt):
+            if block == 3:
+                self.rv.append(self._decode_int8(self.rxCmd[block*i + 1:block*(i+1) - 1]))
+            if block == 4:
+                self.rv.append(self._decode_int16(self.rxCmd[block*i + 1:block*(i+1) - 1]))    
+
     def receive(self):
         if self.hdr == Header.READ:
             r_len = self.cnt * 4 
@@ -77,6 +87,7 @@ class host2servo(DataProcessor):
                     if not self.check_csm(self.rxCmd[block*i:block*(i+1)]):
                         check = False
                         break
+                self.decode_rtn()
                 return check
             elif self.hdr == Header.WRITE:
                 check = True

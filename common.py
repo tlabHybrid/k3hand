@@ -91,5 +91,8 @@ class DataProcessor(object):
     def _ang2rad(self, ang):
         return ang * math.pi / 180.0
 
+    def list_extraction(self, main_list, id_list):
+        return [main_list[id] for id in id_list]
+
 
 
