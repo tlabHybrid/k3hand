@@ -110,7 +110,7 @@ class k3hand(host2servo):
         if isinstance(speeds, int):
             if self.send(Header.WRITE, Address.FB_SC, 1, id_list, [self._speed2int(speeds)]*len(id_list)):
                 for i, id in enumerate(id_list):
-                    self.speeds[id] = speeds[i]
+                    self.speeds[id] = speeds
         elif isinstance(speeds, list):
             if self.send(Header.WRITE, Address.FB_SC, 1, id_list, list(map(self._speed2int,speeds))):
                 for i, id in enumerate(id_list):
@@ -133,7 +133,7 @@ class k3hand(host2servo):
 
     def get_temp(self, id):
         if self.send(Header.READ, Address.M_TEMP, 2, id):
-            return self.rv[0]
+            return self._data2temp(self.rv[0])
     
     def get_ang_min(self, id):
         if self.send(Header.READ, Address.FB_POSL, 2, id):
