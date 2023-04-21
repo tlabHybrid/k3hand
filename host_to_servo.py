@@ -2,6 +2,7 @@ from __future__ import print_function
 import serial
 from struct import *
 from common import *
+import threading
 byte = 8
 class host2servo(DataProcessor):
     def __init__(self, port):
@@ -12,6 +13,7 @@ class host2servo(DataProcessor):
         self.cnt = None
         self.rtn = None
         self.rv = None
+        self.lock = threading.Lock()
 
     def make_txCmd(self, hdr, ad, lg, id_list, data_list = []):
         id_list = self._make_list(id_list)
@@ -56,8 +58,14 @@ class host2servo(DataProcessor):
 
     def send(self, hdr, ad, lg, id_list, data_list = []):
         self.make_txCmd(hdr, ad, lg, id_list, data_list)
+        self.lock.acquire()
         self.ser.write(self.txCmd)
-        return self.receive()
+        #if self.ser.out_waiting == 0:
+            #print("OK")
+        self.ser.flush()
+        rec = self.receive()
+        self.lock.release()
+        return rec 
     
     def decode_rtn(self):
         block = int(len(self.rxCmd) / self.cnt)        
@@ -74,6 +82,16 @@ class host2servo(DataProcessor):
         if self.hdr == Header.WRITE:
             r_len = self.cnt
         r = self.ser.read(len(self.txCmd) + r_len)
+        """ a = self.ser.inWaiting()
+        print(a) """
+        """ if self.ser.inWaiting() > 0:
+            r = self.ser.read(self._serial_port.inWaiting())
+        else:
+            return False """
+        #r = self.ser.read_all()
+        #hex_str = ' '.join(['{:02x}'.format(x) for x in bytearray(r)])
+        #print(hex_str)
+
         self.rxCmd = r[len(self.txCmd):]
         if len(self.rxCmd) == 0:
             print("Error: Servos send no messages!")
@@ -102,6 +120,8 @@ class host2servo(DataProcessor):
         self.ser.close()
     
     def print_cmd(self, cmd):
-        for b in cmd:
+        hex_str = ' '.join(['{:02x}'.format(x) for x in bytearray(cmd)])
+        print(hex_str)
+        """ for b in cmd:
             print(format(b, '#04x'), end=' ')
-        print()
+        print() """

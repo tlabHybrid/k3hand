@@ -14,8 +14,7 @@ class k3hand(host2servo):
         self.ang_min = [-90, -90, -30, -90, -90, -50, -90, -90]
         self.ang_max = [30, 90, 90, 90, 90, 130, 90, 90]
         self.get_servos_stat()
-        self.debug = True
-        self.start = time.time()        
+        self.debug = True    
         self.unlock_all()
         self.send_ang_maxs(self.ang_max)
         self.send_ang_mins(self.ang_min)
