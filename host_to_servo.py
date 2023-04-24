@@ -60,10 +60,8 @@ class host2servo(DataProcessor):
         self.make_txCmd(hdr, ad, lg, id_list, data_list)
         self.lock.acquire()
         self.ser.write(self.txCmd)
-        #if self.ser.out_waiting == 0:
-            #print("OK")
         self.ser.flush()
-        rec = self.receive()
+        rec = self.receive()        
         self.lock.release()
         return rec 
     
@@ -81,16 +79,7 @@ class host2servo(DataProcessor):
             r_len = self.cnt * 4 
         if self.hdr == Header.WRITE:
             r_len = self.cnt
-        r = self.ser.read(len(self.txCmd) + r_len)
-        """ a = self.ser.inWaiting()
-        print(a) """
-        """ if self.ser.inWaiting() > 0:
-            r = self.ser.read(self._serial_port.inWaiting())
-        else:
-            return False """
-        #r = self.ser.read_all()
-        #hex_str = ' '.join(['{:02x}'.format(x) for x in bytearray(r)])
-        #print(hex_str)
+        r = self.ser.read(len(self.txCmd) + r_len)        
 
         self.rxCmd = r[len(self.txCmd):]
         if len(self.rxCmd) == 0:
@@ -122,6 +111,3 @@ class host2servo(DataProcessor):
     def print_cmd(self, cmd):
         hex_str = ' '.join(['{:02x}'.format(x) for x in bytearray(cmd)])
         print(hex_str)
-        """ for b in cmd:
-            print(format(b, '#04x'), end=' ')
-        print() """
