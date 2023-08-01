@@ -87,9 +87,24 @@ class k3hand(host2servo):
             return self.list_extraction(self.cur_angles, id_list)
 
     def get_radians(self, id_list=list(range(8))):
+        """Get the current angles of the servos with the given ids.
+
+        Args:
+            id_list (int, optional): The ids of the servos to be read. Defaults to list(range(8)).
+
+        Returns:
+            list: The current angles of the servos.
+        """
         return list(map(self._ang2rad, self.get_angles(id_list)))
 
-    def send_angle(self, id, angle, speed=None):        
+    def send_angle(self, id, angle, speed=None):   
+        """Send the target angle to the servo with the given id.
+
+        Args:
+            id (int): The id of the servo to be written.
+            angle (float): The target angle of the servo.
+            speed (int, optional): The speed of the servo. Defaults to None.
+        """
         if speed is None:
             self.send(Header.WRITE, Address.FB_SC, 1, id, self._speed2int(self.speeds[id]))
         else:
@@ -103,6 +118,13 @@ class k3hand(host2servo):
         
             
     def send_angles(self, angles, speeds=None, id_list=list(range(8))):
+        """Send the target angles to the servos with the given ids.
+
+        Args:
+            angles (list): The target angles of the servos.
+            speeds (list or int, optional): The speeds of the servos. Defaults to None.
+            id_list (list, optional): The ids of the servos to be written. Defaults to list(range(8)).
+        """
         if speeds is None:
             self.send(Header.WRITE, Address.FB_SC, 1, id_list, list(map(self._speed2int,self.list_extraction(self.speeds, id_list))))
         else:
@@ -131,12 +153,32 @@ class k3hand(host2servo):
                     print(" are not enabled!")
 
     def send_radians(self, radians, speeds=None, id_list=list(range(8))):
+        """Send the target angles to the servos with the given ids.
+
+        Args:
+            radians (list): The target angles of the servos.
+            speeds (list or int, optional): The speeds of the servos. Defaults to None.
+            id_list (list, optional): The ids of the servos to be written. Defaults to list(range(8)).
+        """
         self.send_angles(list(map(self._rad2ang, radians)), speeds, id_list)
 
-    def send_radian(self, id, radian):
-        self.send_angle(id, self._rad2ang(radian))
+    def send_radian(self, id, radian, speed=None):
+        """Send the target angle to the servo with the given id.
+
+        Args:
+            id (int): The id of the servo to be written.
+            radian (float): The target angle of the servo.
+            speed (int, optional): The speed of the servo. Defaults to None.
+        """
+        self.send_angle(id, self._rad2ang(radian), speed)
 
     def send_speeds(self, speeds, id_list=list(range(8))):
+        """Send the target speeds to the servos with the given ids.
+
+        Args:
+            speeds (list or int): The target speeds of the servos.
+            id_list (list, optional): The ids of the servos to be written. Defaults to list(range(8)).
+        """
         if isinstance(speeds, int):
             if self.send(Header.WRITE, Address.FB_SC, 1, id_list, [self._speed2int(speeds)]*len(id_list)):
                 for i, id in enumerate(id_list):
@@ -147,43 +189,106 @@ class k3hand(host2servo):
                     self.speeds[id] = speeds[i]
 
     def get_speeds(self, id_list=list(range(8))):
+        """Get the current speeds of the servos with the given ids.
+
+        Args:
+            id_list (list, optional): The ids of the servos to be read. Defaults to list(range(8)).
+
+        Returns:
+            list: The current speeds of the servos.
+        """
         if self.send(Header.READ, Address.FB_SC, 1, list(range(8))):
             for i, id in enumerate(id_list):
                 self.speeds[id] = self._int2speed(self.rv[i])
             return self.list_extraction(self.speeds, id_list)
 
     def get_speed(self, id):
+        """Get the current speed of the servo with the given id.
+
+        Args:
+            id (int): The id of the servo to be read.
+
+        Returns:
+            int: The current speed of the servo.
+        """
         if self.send(Header.READ, Address.FB_SC, 1, id):
             self.speeds[id] = self._int2speed(self.rv[0])
             return self.speeds[id]
     
     def send_speed(self, id, speed):
+        """Send the target speed to the servo with the given id.
+
+        Args:
+            id (int): The id of the servo to be written.
+            speed (int): The target speed of the servo.
+        """
         if self.send(Header.WRITE, Address.FB_SC, 1, id, self._speed2int(speed)):
             self.speeds[id] = speed
 
     def get_temp(self, id):
+        """Get the current temperature of the servo with the given id.
+
+        Args:
+            id (int): The id of the servo to be read.
+
+        Returns:
+            int: The current temperature of the servo.
+        """
         if self.send(Header.READ, Address.M_TEMP, 2, id):
             return self._data2temp(self.rv[0])
     
     def get_ang_min(self, id):
+        """Get the minimum angle of the servo with the given id.
+
+        Args:
+            id (int): The id of the servo to be read.
+
+        Returns:
+            int: The minimum angle of the servo.
+        """
         if self.send(Header.READ, Address.FB_POSL, 2, id):
             return self._int2angle(self.rv[0])
     
     def get_ang_max(self, id):
+        """Get the maximum angle of the servo with the given id.
+
+        Args:
+            id (int): The id of the servo to be read.
+
+        Returns:
+            int: The maximum angle of the servo.
+        """         
         if self.send(Header.READ, Address.FB_POSH, 2, id):
             return self._int2angle(self.rv[0])
 
     def send_ang_mins(self, angles, id_list=list(range(8))):
+        """Send the minimum angles to the servos with the given ids.
+
+        Args:
+            angles (list): The minimum angles of the servos.
+            id_list (list, optional): The ids of the servos to be written. Defaults to list(range(8)).
+        """
         if self.send(Header.WRITE, Address.FB_POSL, 2, id_list, list(map(self._angle2int, angles))):
             for i in range(len(id_list)):
                 self.ang_min[id_list[i]] = angles[i]
 
     def send_ang_maxs(self, angles, id_list=list(range(8))):
+        """Send the maximum angles to the servos with the given ids.
+
+        Args:
+            angles (list): The maximum angles of the servos.
+            id_list (list, optional): The ids of the servos to be written. Defaults to list(range(8)).
+        """
         if self.send(Header.WRITE, Address.FB_POSH, 2, id_list, list(map(self._angle2int, angles))):
             for i in range(len(id_list)):
                 self.ang_max[id_list[i]] = angles[i]
 
     def get_servos_stat(self, id_list=list(range(8))):
+        """Get the status of the servos with the given ids.
+
+        Args:
+            id_list (list, optional): The ids of the servos to be read. Defaults to list(range(8)).
+        """
         if self.send(Header.READ, Address.FB_EN, 1, id_list):
             for i, id in enumerate(id_list):
                 if self.rv[i] == Command.ENABLE:
@@ -203,21 +308,35 @@ class k3hand(host2servo):
                 self.tar_angles[id] = self._int2angle(self.rv[i])
        
     def enable_servo(self, id):
+        """Enable the servo with the given id.
+
+        Args:
+            id (int): The id of the servo to be enabled.
+        """
         if self.send(Header.WRITE, Address.FB_EN, 1, id, Command.ENABLE):
             if self.debug:
                 print("The servo id %d is enabled" %id)
             self.servo_en[id] = True
     
     def disable_servo(self, id):
+        """Disable the servo with the given id.
+
+        Args:
+            id (int): The id of the servo to be disabled.
+        """
         if self.send(Header.WRITE, Address.FB_EN, 1, id, Command.DISABLE):
             if self.debug:
                 print("The servo id %d is disabled" %id)
             self.servo_en[id] = False
 
     def enable_all(self):
+        """Enable all the servos.
+        """
         if self.send(Header.WRITE, Address.FB_EN, 1, list(range(8)), [Command.ENABLE]*8):
             self.servo_en = [True]*8
 
     def disable_all(self):
+        """Disable all the servos.
+        """
         if self.send(Header.WRITE, Address.FB_EN, 1, list(range(8)), [Command.DISABLE]*8):
             self.servo_en = [False]*8
