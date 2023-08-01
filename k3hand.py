@@ -22,47 +22,94 @@ class k3hand(host2servo):
         self.lock_all()
 
     def disconnect(self):
+        """Disconnect the serial port."""
         self.disable_all()
         self.close()
 
     def unlock_servo(self, id):
+        """Unlock the servo with the given id.
+
+        Args:
+            id (int): The id of the servo to be unlocked.
+        """
         if self.send(Header.WRITE, Address.SYS_ULK, 1, id, Command.UNLOCK):            
             self.servo_lock[id] = False
             if self.debug:
                 print("The servo %d is unlocked" %id)
     
     def lock_servo(self, id):
+        """Lock the servo with the given id.
+        
+        Args:
+            id (int): The id of the servo to be locked.
+        """
         if self.send(Header.WRITE, Address.SYS_ULK, 1, id, Command.LOCK):
             self.servo_lock[id] = True
             if self.debug:
                 print("The servo %d is locked" %id)
 
     def unlock_all(self):
+        """Unlock all the servos.
+        """
         if self.send(Header.WRITE, Address.SYS_ULK, 1, list(range(8)), [Command.UNLOCK]*8):
             self.servo_lock = [False] * 8
 
     def lock_all(self):
+        """Lock all the servos.
+        """
         if self.send(Header.WRITE, Address.SYS_ULK, 1, list(range(8)), [Command.LOCK]*8):
             self.servo_lock = [True] * 8           
 
     def get_angle(self, id):
+        """Get the current angle of the servo with the given id.
+
+        Args:
+            id (int): The id of the servo to be read.
+
+        Returns:
+            int: The current angle of the servo.
+        """
         if self.send(Header.READ, Address.M_POS, 2, id):
             i = self._decode_int16(self.rtn)
             self.cur_angles[id] = self._int2angle(i)            
             return self.cur_angles[id]
-        
+    
     def get_angles(self, id_list=list(range(8))):
+        """Get the current angles of the servos with the given ids.
+
+        Args:
+            id_list (list, optional): The ids of the servos to be read. Defaults to list(range(8)).
+
+        Returns:
+            list: The current angles of the servos.
+        """
         if self.send(Header.READ, Address.M_POS, 2, id_list):
             for i in range(len(id_list)):
                 self.cur_angles[id_list[i]] = self._int2angle(self._decode_int16(self.rtn[2*i:2*(i+1)]))
             return [self.cur_angles[id] for id in id_list]
+        
     def get_radians(self, id_list=list(range(8))):
+        """Get the current angles of the servos with the given ids.
+
+        Args:
+            id_list (list, optional): The ids of the servos to be read. Defaults to list(range(8)).
+
+        Returns:
+            list: The current angles of the servos.
+        """
         if self.send(Header.READ, Address.M_POS, 2, id_list):
             for i in range(len(id_list)):
                 self.cur_angles[id_list[i]] = self._int2angle(self._decode_int16(self.rtn[2*i:2*(i+1)]))
             return [self._ang2rad(self.cur_angles[id]) for id in id_list]
 
-    def send_angle(self, id, angle, speed=100):        
+    def send_angle(self, id, angle, speed=100):
+        """Send the target angle to the servo with the given id.
+        
+        Args:
+            id (int): The id of the servo to be written.
+            angle (int): The target angle of the servo.
+            speed (int, optional): The speed of the servo. Defaults to 100.
+        """       
         if self.send(Header.WRITE, Address.FB_SC, 1, id, [self._speed2int(speed)]*8):
             self.speeds[id] = speed
         if self.send(Header.WRITE, Address.FB_TPOS, 2, id, self._angle2int(angle)):
@@ -72,6 +119,13 @@ class k3hand(host2servo):
         
             
     def send_angles(self, angles, speed=100, id_list=list(range(8))):
+        """Send the target angles to the servos with the given ids.
+
+        Args:
+            angles (list): The target angles of the servos.
+            speed (int, optional): The speed of the servos. Defaults to 100.
+            id_list (list, optional): The ids of the servos to be written. Defaults to list(range(8)).
+        """
         if self.send(Header.WRITE, Address.FB_SC, 1, id_list, [self._speed2int(speed)]*8):
             self.speeds[id] = speed        
         if self.send(Header.WRITE, Address.FB_TPOS, 2, id_list, list(map(self._angle2int, angles))):
