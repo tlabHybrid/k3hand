@@ -1,6 +1,7 @@
 import serial
 from struct import *
 from common import *
+import threading
 byte = 8
 class host2servo:
     def __init__(self, port):
@@ -10,6 +11,8 @@ class host2servo:
         self.hdr = None
         self.cnt = None
         self.rtn = None
+        self.rv = None
+        self.lock = threading.Lock()
 
     def make_txCmd(self, hdr, ad, lg, id_list, data_list = []):
         id_list = DataProcessor._make_list(id_list)
@@ -55,15 +58,29 @@ class host2servo:
 
     def send(self, hdr, ad, lg, id_list, data_list = []):
         self.make_txCmd(hdr, ad, lg, id_list, data_list)
+        self.lock.acquire()
         self.ser.write(self.txCmd)
-        return self.receive()
+        self.ser.flush()
+        rec = self.receive()        
+        self.lock.release()
+        return rec 
     
+    def decode_rtn(self):
+        block = int(len(self.rxCmd) / self.cnt)        
+        self.rv = []
+        for i in range(self.cnt):
+            if block == 3:
+                self.rv.append(self._decode_int8(self.rxCmd[block*i + 1:block*(i+1) - 1]))
+            if block == 4:
+                self.rv.append(self._decode_int16(self.rxCmd[block*i + 1:block*(i+1) - 1]))    
+
     def receive(self):
         if self.hdr == Header.READ:
             r_len = self.cnt * 4 * byte
         if self.hdr == Header.WRITE:
-            r_len = self.cnt * byte
-        r = self.ser.read(len(self.txCmd)*byte + r_len)
+            r_len = self.cnt
+        r = self.ser.read(len(self.txCmd) + r_len)        
+
         self.rxCmd = r[len(self.txCmd):]
         if len(self.rxCmd) == 0:
             print("Error: Servos send no messages!")
@@ -77,6 +94,7 @@ class host2servo:
                     if not self.check_csm(self.rxCmd[block*i:block*(i+1)]):
                         check = False
                         break
+                self.decode_rtn()
                 return check
             elif self.hdr == Header.WRITE:
                 check = True
@@ -91,6 +109,5 @@ class host2servo:
         self.ser.close()
     
     def print_cmd(self, cmd):
-        for b in cmd:
-            print(format(b, '#04x'), end=' ')
-        print()
+        hex_str = ' '.join(['{:02x}'.format(x) for x in bytearray(cmd)])
+        print(hex_str)

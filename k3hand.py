@@ -14,8 +14,7 @@ class k3hand(host2servo):
         self.ang_min = [-90, -90, -30, -90, -90, -50, -90, -90]
         self.ang_max = [30, 90, 90, 90, 90, 130, 90, 90]
         self.get_servos_stat()
-        self.debug = False
-        self.start = time.time()        
+        self.debug = True    
         self.unlock_all()
         self.send_ang_maxs(self.ang_max)
         self.send_ang_mins(self.ang_min)
@@ -70,8 +69,7 @@ class k3hand(host2servo):
             int: The current angle of the servo.
         """
         if self.send(Header.READ, Address.M_POS, 2, id):
-            i = self._decode_int16(self.rtn)
-            self.cur_angles[id] = self._int2angle(i)            
+            self.cur_angles[id] = self._int2angle(self.rv[0])            
             return self.cur_angles[id]
     
     def get_angles(self, id_list=list(range(8))):
@@ -84,94 +82,79 @@ class k3hand(host2servo):
             list: The current angles of the servos.
         """
         if self.send(Header.READ, Address.M_POS, 2, id_list):
-            for i in range(len(id_list)):
-                self.cur_angles[id_list[i]] = self._int2angle(self._decode_int16(self.rtn[2*i:2*(i+1)]))
-            return [self.cur_angles[id] for id in id_list]
-        
+            for i, id in enumerate(id_list):
+                self.cur_angles[id] = self._int2angle(self.rv[i])
+            return self.list_extraction(self.cur_angles, id_list)
+
     def get_radians(self, id_list=list(range(8))):
-        """Get the current angles of the servos with the given ids.
+        return list(map(self._ang2rad, self.get_angles(id_list)))
 
-        Args:
-            id_list (list, optional): The ids of the servos to be read. Defaults to list(range(8)).
-
-        Returns:
-            list: The current angles of the servos.
-        """
-        if self.send(Header.READ, Address.M_POS, 2, id_list):
-            for i in range(len(id_list)):
-                self.cur_angles[id_list[i]] = self._int2angle(self._decode_int16(self.rtn[2*i:2*(i+1)]))
-            return [self._ang2rad(self.cur_angles[id]) for id in id_list]
-
-    def send_angle(self, id, angle, speed=100):
-        """Send the target angle to the servo with the given id.
-        
-        Args:
-            id (int): The id of the servo to be written.
-            angle (int): The target angle of the servo.
-            speed (int, optional): The speed of the servo. Defaults to 100.
-        """       
-        if self.send(Header.WRITE, Address.FB_SC, 1, id, [self._speed2int(speed)]*8):
-            self.speeds[id] = speed
+    def send_angle(self, id, angle, speed=None):        
+        if speed is None:
+            self.send(Header.WRITE, Address.FB_SC, 1, id, self._speed2int(self.speeds[id]))
+        else:
+            if self.send(Header.WRITE, Address.FB_SC, 1, id, self._speed2int(speed)):
+                self.speeds[id] = speed
         if self.send(Header.WRITE, Address.FB_TPOS, 2, id, self._angle2int(angle)):
             self.tar_angles[id] = angle
+
         if self.debug and (not self.servo_en[id]):
              print("Warning: The servo id %d is not enabled." %id)
         
             
-    def send_angles(self, angles, speed=100, id_list=list(range(8))):
-        """Send the target angles to the servos with the given ids.
-
-        Args:
-            angles (list): The target angles of the servos.
-            speed (int, optional): The speed of the servos. Defaults to 100.
-            id_list (list, optional): The ids of the servos to be written. Defaults to list(range(8)).
-        """
-        if self.send(Header.WRITE, Address.FB_SC, 1, id_list, [self._speed2int(speed)]*8):
-            self.speeds[id] = speed        
-        if self.send(Header.WRITE, Address.FB_TPOS, 2, id_list, list(map(self._angle2int, angles))):
-            for i in range(len(id_list)):
-                self.tar_angles[id_list[i]] = angles[i]      
-               
-        if not all(self.servo_en):
-            if self.debug:
-                dis_list = [s for s in range(8) if not self.servo_en[s]]            
-                if len(dis_list) == 1:
-                    print("Warning: The servo id%d is not enabled!" %dis_list[0])
-                else:
-                    print("Warning: The servo id", end=" ")
-                    print(*dis_list, sep=",",end="")
-                    print(" are not enabled!")
-
-    def send_angles_dif(self, angles, speed=100, id_list=list(range(8))):
-        if self.send(Header.WRITE, Address.FB_SC, 1, id_list, [self._speed2int(speed)]*8) and self.send(Header.WRITE, Address.FB_TPOS, 2, id_list, list(map(self._angle2int, angles))):
-            for i in range(len(id_list)):
-                self.tar_angles[id_list[i]] = angles[i]      
-                self.speeds[id_list[i]] = speed                             
-               
-        if not all(self.servo_en):
-            if self.debug:
-                dis_list = [s for s in range(8) if not self.servo_en[s]]            
-                if len(dis_list) == 1:
-                    print("Warning: The servo id%d is not enabled!" %dis_list[0])
-                else:
-                    print("Warning: The servo id", end=" ")
-                    print(*dis_list, sep=",",end="")
-                    print(" are not enabled!")
+    def send_angles(self, angles, speeds=None, id_list=list(range(8))):
+        if speeds is None:
+            self.send(Header.WRITE, Address.FB_SC, 1, id_list, list(map(self._speed2int,self.list_extraction(self.speeds, id_list))))
+        else:
+            if isinstance(speeds, list):
+                if self.send(Header.WRITE, Address.FB_SC, 1, id_list, list(map(self._speed2int, speeds))):
+                    for i, id in enumerate(id_list):
+                        self.speeds[id] = speeds[i]                
+            elif isinstance(speeds, int):
+                if self.send(Header.WRITE, Address.FB_SC, 1, id_list, [self._speed2int(speeds)]*len(id_list)):
+                    for id in id_list:
+                        self.speeds[id] = speeds
                 
-    def send_radians(self, radians, id_list=list(range(8))):
-        self.send_angles(list(map(self._rad2ang, radians)), id_list)
+
+        if self.send(Header.WRITE, Address.FB_TPOS, 2, id_list, list(map(self._angle2int, angles))):
+            for i, id in enumerate(id_list):
+                self.tar_angles[id] = angles[i]      
+               
+        if not all(self.servo_en):
+            if self.debug:
+                dis_list = [s for s in range(8) if not self.servo_en[s]]            
+                if len(dis_list) == 1:
+                    print("Warning: The servo id%d is not enabled!" %dis_list[0])
+                else:
+                    print("Warning: The servo id", end=" ")
+                    print(*dis_list, sep=",",end="")
+                    print(" are not enabled!")
+
+    def send_radians(self, radians, speeds=None, id_list=list(range(8))):
+        self.send_angles(list(map(self._rad2ang, radians)), speeds, id_list)
 
     def send_radian(self, id, radian):
         self.send_angle(id, self._rad2ang(radian))
 
-    def set_speed(self, speed):
-        if self.send(Header.WRITE, Address.FB_SC, 1, list(range(8)), [self._speed2int(speed)]*8):
-            self.speeds = [speed]*8
+    def send_speeds(self, speeds, id_list=list(range(8))):
+        if isinstance(speeds, int):
+            if self.send(Header.WRITE, Address.FB_SC, 1, id_list, [self._speed2int(speeds)]*len(id_list)):
+                for i, id in enumerate(id_list):
+                    self.speeds[id] = speeds
+        elif isinstance(speeds, list):
+            if self.send(Header.WRITE, Address.FB_SC, 1, id_list, list(map(self._speed2int,speeds))):
+                for i, id in enumerate(id_list):
+                    self.speeds[id] = speeds[i]
 
-    
+    def get_speeds(self, id_list=list(range(8))):
+        if self.send(Header.READ, Address.FB_SC, 1, list(range(8))):
+            for i, id in enumerate(id_list):
+                self.speeds[id] = self._int2speed(self.rv[i])
+            return self.list_extraction(self.speeds, id_list)
+
     def get_speed(self, id):
         if self.send(Header.READ, Address.FB_SC, 1, id):
-            self.speeds[id] = self._int2speed(self._decode_uint8(self.rtn))
+            self.speeds[id] = self._int2speed(self.rv[0])
             return self.speeds[id]
     
     def send_speed(self, id, speed):
@@ -180,15 +163,15 @@ class k3hand(host2servo):
 
     def get_temp(self, id):
         if self.send(Header.READ, Address.M_TEMP, 2, id):
-            return self._decode_int16(self.rtn)
+            return self._data2temp(self.rv[0])
     
     def get_ang_min(self, id):
         if self.send(Header.READ, Address.FB_POSL, 2, id):
-            return self._int2angle(self._decode_int16(self.rtn))
+            return self._int2angle(self.rv[0])
     
     def get_ang_max(self, id):
         if self.send(Header.READ, Address.FB_POSH, 2, id):
-            return self._int2angle(self._decode_int16(self.rtn))
+            return self._int2angle(self.rv[0])
 
     def send_ang_mins(self, angles, id_list=list(range(8))):
         if self.send(Header.WRITE, Address.FB_POSL, 2, id_list, list(map(self._angle2int, angles))):
@@ -202,23 +185,23 @@ class k3hand(host2servo):
 
     def get_servos_stat(self, id_list=list(range(8))):
         if self.send(Header.READ, Address.FB_EN, 1, id_list):
-            for id in id_list:
-                if self._decode_uint8(self.rtn[id]) == Command.ENABLE:
+            for i, id in enumerate(id_list):
+                if self.rv[i] == Command.ENABLE:
                     self.servo_en[id] = True
                 else:
                     self.servo_en[id] = False
             
         if self.send(Header.READ, Address.SYS_ULK, 1, id_list):
-            for id in id_list:
-                if self._decode_uint8(self.rtn[id]) == Command.LOCK:
+            for i, id in enumerate(id_list):
+                if self.rv[i] == Command.LOCK:
                     self.servo_lock[id] = True
                 else:
                     self.servo_lock[id] = False
+            
         if self.send(Header.READ, Address.FB_TPOS, 2, id_list):
-            for i in range(len(id_list)):
-                self.tar_angles[id_list[i]] = self._int2angle(self._decode_int16(self.rxCmd[4*i+1:4*i+3]))
+            for i, id in enumerate(id_list):
+                self.tar_angles[id] = self._int2angle(self.rv[i])
        
-
     def enable_servo(self, id):
         if self.send(Header.WRITE, Address.FB_EN, 1, id, Command.ENABLE):
             if self.debug:
